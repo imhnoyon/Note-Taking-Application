@@ -5,7 +5,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Note, User
 from .permissions import IsAdminRole, IsUserRole
 from .serializers import *
@@ -76,6 +75,37 @@ class LoginView(APIView):
             'success': False,
             'message': 'Invalid username or password'
         }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+
+class ProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = UserlistSerializer(user)
+        return Response({
+            "success": True,
+            "message": "Profile retrieved successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def patch(self,request):
+        user = request.user
+        serializer = UserlistSerializer(user,data=request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Profile updated successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({
+            "success": False,
+            "message": "Validation failed.",
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class NoteCreateAPIView(APIView):

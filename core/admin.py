@@ -5,7 +5,7 @@ from .models import *
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username","first_name","last_name","email","role","is_staff","is_active")
+    list_display = ("username","first_name","last_name","email",'interests',"role","is_staff","is_active")
 
 
 @admin.register(Note)

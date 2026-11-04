@@ -5,6 +5,7 @@ from .views import  *
 urlpatterns = [
     path('register/',RegisterView.as_view(),name='register'),
     path('login/',LoginView.as_view(),name='login'),
+    path('getme/',ProfileAPIView.as_view(),name='getme'),
     path('create/note/', NoteCreateAPIView.as_view(), name='create-note'),
     path('notes/<int:pk>/', NoteCreateAPIView.as_view(), name='note-detail'),
     path('update/note/<int:pk>/', NoteCreateAPIView.as_view(), name='update-note'),
