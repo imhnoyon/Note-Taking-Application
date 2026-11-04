@@ -33,9 +33,9 @@ AUTH_USER_MODEL = 'core.User'
 
 INSTALLED_APPS = [
     'django_mongodb_backend',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
+    'Backend.apps.MongoAdminConfig',
+    'Backend.apps.MongoAuthConfig',
+    'Backend.apps.MongoContentTypesConfig',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -94,14 +94,7 @@ WSGI_APPLICATION = 'Backend.wsgi.application'
 #     }
 # }
 
-DEFAULT_AUTO_FIELD = "django_mongodb_backend.fields.ObjectIdAutoField"
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django_mongodb_backend",
-#         "NAME": os.getenv("MONGODB_DATABASE"),
-#         "HOST": os.getenv("MONGODB_URI"),
-#     }
-# }
+
 
 
 DATABASES = {
@@ -150,19 +143,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/stable/ref/settings/#default-auto-field
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+# DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = 'django_mongodb_backend.fields.ObjectIdAutoField'
 
 # Django REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
+   
 }
 
 
