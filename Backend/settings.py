@@ -32,10 +32,13 @@ AUTH_USER_MODEL = 'core.User'
 # Application definition
 
 INSTALLED_APPS = [
-    'django_mongodb_backend',
-    'Backend.apps.MongoAdminConfig',
-    'Backend.apps.MongoAuthConfig',
-    'Backend.apps.MongoContentTypesConfig',
+    # 'django_mongodb_backend',
+    # 'Backend.apps.MongoAdminConfig',
+    # 'Backend.apps.MongoAuthConfig',
+    # 'Backend.apps.MongoContentTypesConfig',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -83,27 +86,27 @@ WSGI_APPLICATION = 'Backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/stable/ref/settings/#databases
-# DATABASES = {
-#     'default': {
-#         'ENGINE': os.environ.get("DB_ENGINE", "django.db.backends.sqlite3"),
-#         'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
-#         'USER': os.environ.get('DB_USER', 'db_user'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', 'db_password'),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-#     }
-# }
-
-
-
-
 DATABASES = {
-    "default": {
-        "ENGINE": "django_mongodb_backend",
-        "NAME": "note",
-        "HOST": os.getenv("MONGODB_URI"),
+    'default': {
+        'ENGINE': os.environ.get("DB_ENGINE", "django.db.backends.sqlite3"),
+        'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
+        'USER': os.environ.get('DB_USER', 'db_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'db_password'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
+
+
+
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django_mongodb_backend",
+#         "NAME": "note",
+#         "HOST": os.getenv("MONGODB_URI"),
+#     }
+# }
 
 
 # Password validation
@@ -145,8 +148,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 
-# DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-DEFAULT_AUTO_FIELD = 'django_mongodb_backend.fields.ObjectIdAutoField'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# DEFAULT_AUTO_FIELD = 'django_mongodb_backend.fields.ObjectIdAutoField'
 
 # Django REST Framework Settings
 REST_FRAMEWORK = {
