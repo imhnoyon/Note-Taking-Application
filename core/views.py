@@ -128,27 +128,27 @@ class NoteCreateAPIView(APIView):
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
     def get(self, request, pk):
-        try:
-            note = (
-                Note.objects.select_related('user')
-                .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
-                .get(pk=pk, user=request.user)
-            )
-        except (Note.DoesNotExist, ValidationError):
+            try:
+                note = (
+                    Note.objects.select_related('user')
+                    .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
+                    .get(pk=pk, user=request.user)
+                )
+            except (Note.DoesNotExist, ValidationError):
+                return Response({
+                    "success": False,
+                    "message": "Note not found."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = NoteSerializer(note)
+
             return Response({
-                "success": False,
-                "message": "Note not found."
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = NoteSerializer(note)
-
-        return Response({
-            "success": True,
-            "message": "Note retrieved successfully.",
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
+                "success": True,
+                "message": "Note retrieved successfully.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+    
 
 
     def patch(self, request, pk):
