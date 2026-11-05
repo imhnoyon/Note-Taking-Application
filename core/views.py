@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
+from django.db import connection
 from .models import Note, User
 from .permissions import IsAdminRole, IsUserRole
 from .serializers import *
@@ -128,32 +129,38 @@ class NoteCreateAPIView(APIView):
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
     def get(self, request, pk):
-            try:
-                note = (
-                    Note.objects.select_related('user')
-                    .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
-                    .get(pk=pk, user=request.user)
-                )
-            except (Note.DoesNotExist, ValidationError):
-                return Response({
-                    "success": False,
-                    "message": "Note not found."
-                }, status=status.HTTP_404_NOT_FOUND)
-
-            serializer = NoteSerializer(note)
-
+        try:
+            query = (
+                Note.objects.select_related('user')
+                .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
+            )
+            if request.user.is_superuser or getattr(request.user, 'role', None) == User.Role.ADMIN:
+                note = query.get(pk=pk)
+            else:
+                note = query.get(pk=pk, user=request.user)
+        except (Note.DoesNotExist, ValidationError):
             return Response({
-                "success": True,
-                "message": "Note retrieved successfully.",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-    
+                "success": False,
+                "message": "Note not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = NoteSerializer(note)
+
+        return Response({
+            "success": True,
+            "message": "Note retrieved successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
 
     def patch(self, request, pk):
         try:
-            note = Note.objects.get(pk=pk, user=request.user)
+            if request.user.is_superuser or getattr(request.user, 'role', None) == User.Role.ADMIN:
+                note = Note.objects.get(pk=pk)
+            else:
+                note = Note.objects.get(pk=pk, user=request.user)
         except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
@@ -178,7 +185,10 @@ class NoteCreateAPIView(APIView):
 
     def delete(self, request, pk):
         try:
-            note = Note.objects.get(pk=pk, user=request.user)
+            if request.user.is_superuser or getattr(request.user, 'role', None) == User.Role.ADMIN:
+                note = Note.objects.get(pk=pk)
+            else:
+                note = Note.objects.get(pk=pk, user=request.user)
         except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
@@ -228,9 +238,11 @@ class UserListAPIView(APIView):
     pagination_class = UserListPagination
 
     def get(self, request):
-        users = User.objects.exclude(
-            role=User.Role.ADMIN
-        ).order_by('-id')
+        users = (
+            User.objects.exclude(role=User.Role.ADMIN)
+            .only('id', 'username', 'email', 'first_name', 'last_name', 'role', 'interests')
+            .order_by('-id')
+        )
 
         paginator = self.pagination_class()
         paginated_users = paginator.paginate_queryset(users, request)
@@ -252,8 +264,11 @@ class UserRetrieveUpdateAPIView(APIView):
 
     def get(self, request, pk):
         try:
-            user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
+            user = (
+                User.objects.only('id', 'username', 'email', 'first_name', 'last_name', 'role', 'interests')
+                .get(pk=pk)
+            )
+        except (User.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "User not found."
@@ -313,12 +328,17 @@ class AdminNoteListAPIView(APIView):
     pagination_class = UserListPagination
 
     def get(self, request):
-        notes = Note.objects.all().select_related('user').order_by('-created_at')
+        notes = (
+            Note.objects.all()
+            .select_related('user')
+            .only('id', 'title', 'description', 'created_at', 'updated_at', 'user__id', 'user__username', 'user__email')
+            .order_by('-created_at')
+        )
 
         paginator = self.pagination_class()
         paginated_notes = paginator.paginate_queryset(notes, request)
 
-        serializer = NoteSerializer(paginated_notes, many=True)
+        serializer = AdminNoteSerializer(paginated_notes, many=True)
 
         return Response({
             "success": True,
@@ -366,4 +386,59 @@ class AdminNoteListAPIView(APIView):
         return Response({
             "success": True,
             "message": "Note deleted successfully."
-        }, status=status.HTTP_200_OK)   
+        }, status=status.HTTP_200_OK)
+    
+
+from collections import defaultdict
+
+class UserGroupedByInterestsAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        users = User.objects.exclude(interests=[]).only(
+            "username", "interests"
+        )
+
+        grouped_data = defaultdict(set)
+
+        for user in users:
+            for interest in user.interests:
+                grouped_data[interest].add(user.username)
+
+        data = [
+            {
+                "interest": interest,
+                "users": sorted(usernames)
+            }
+            for interest, usernames in sorted(grouped_data.items())
+        ]
+
+        return Response({
+            "success": True,
+            "data": data
+        }, status=status.HTTP_200_OK)
+
+
+
+class UserPostsAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+
+        except User.DoesNotExist:
+            return Response({
+                "success": False,
+                "message": "User not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        posts = Note.objects.filter(user=user).order_by("-created_at")
+
+        serializer = AdminNoteSerializer(posts, many=True)
+
+        return Response({
+            "success": True,
+            "message": "User posts retrieved successfully.",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)

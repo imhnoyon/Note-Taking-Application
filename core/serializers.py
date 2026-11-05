@@ -29,10 +29,21 @@ class NoteSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)
     user = serializers.CharField(source='user_id', read_only=True)
 
+
     class Meta:
         model = Note
         fields = ['id', 'user', 'title', 'description', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+# Note Serializer
+class AdminNoteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Note
+        fields = ['id', 'username', 'title', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'username', 'created_at', 'updated_at']
 
 
 class UserlistSerializer(serializers.ModelSerializer):
