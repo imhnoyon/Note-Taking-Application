@@ -23,6 +23,12 @@ class User(AbstractUser):
 
     objects = CustomUserManager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['role'], name='user_role_idx'),
+            models.Index(fields=['interests'], name='user_interests_idx')     
+        ]
+
     @property
     def is_admin(self):
         return self.role == self.Role.ADMIN or self.is_superuser
@@ -46,6 +52,15 @@ class Note(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="note_user_created_idx"),
+            models.Index(fields=["title"], name="note_title_idx"),
+            models.Index(fields=["created_at"], name="note_created_idx"),
+        ]
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.title} - {self.user.username}"

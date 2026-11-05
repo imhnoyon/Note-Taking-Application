@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError
 from .models import Note, User
 from .permissions import IsAdminRole, IsUserRole
 from .serializers import *
@@ -63,7 +64,7 @@ class LoginView(APIView):
                 'success': True,
                 'message': 'Login successful',
                 'data': {
-                    'id': user.id,
+                    'id': str(user.id),
                     'username': user.username,
                     'email': user.email,
                     'access': str(refresh.access_token),
@@ -82,17 +83,15 @@ class ProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        serializer = UserlistSerializer(user)
+        serializer = UserlistSerializer(request.user)
         return Response({
             "success": True,
             "message": "Profile retrieved successfully.",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
-    def patch(self,request):
-        user = request.user
-        serializer = UserlistSerializer(user,data=request.data,partial=True)
+    def patch(self, request):
+        serializer = UserlistSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -132,9 +131,12 @@ class NoteCreateAPIView(APIView):
 
     def get(self, request, pk):
         try:
-            note = Note.objects.get(pk=pk, user=request.user)
-
-        except Note.DoesNotExist:
+            note = (
+                Note.objects.select_related('user')
+                .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
+                .get(pk=pk, user=request.user)
+            )
+        except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "Note not found."
@@ -152,13 +154,13 @@ class NoteCreateAPIView(APIView):
     def patch(self, request, pk):
         try:
             note = Note.objects.get(pk=pk, user=request.user)
-        except Note.DoesNotExist:
+        except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "Note not found."
             }, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = NoteSerializer(note,data=request.data,partial=True)
+        serializer = NoteSerializer(note, data=request.data, partial=True)
 
         if serializer.is_valid():
             serializer.save()
@@ -177,7 +179,7 @@ class NoteCreateAPIView(APIView):
     def delete(self, request, pk):
         try:
             note = Note.objects.get(pk=pk, user=request.user)
-        except Note.DoesNotExist:
+        except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "Note not found."
@@ -192,18 +194,29 @@ class NoteCreateAPIView(APIView):
 
 
 
-     
 class NoteListAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = UserListPagination
 
     def get(self, request):
-        notes = Note.objects.filter(user=request.user).order_by('-created_at')
+        notes = (
+            Note.objects.filter(user=request.user)
+            .select_related('user')
+            .only('id', 'user_id', 'title', 'description', 'created_at', 'updated_at')
+            .order_by('-created_at')
+        )
 
-        serializer = NoteSerializer(notes, many=True)
+        paginator = self.pagination_class()
+        paginated_notes = paginator.paginate_queryset(notes, request)
+
+        serializer = NoteSerializer(paginated_notes, many=True)
 
         return Response({
             "success": True,
             "message": "Notes retrieved successfully.",
+            "count": paginator.page.paginator.count,
+            "next": paginator.get_next_link(),
+            "previous": paginator.get_previous_link(),
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
@@ -253,10 +266,10 @@ class UserRetrieveUpdateAPIView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-    def patch(self,request,pk):
+    def patch(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "User not found."
@@ -278,10 +291,10 @@ class UserRetrieveUpdateAPIView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)  
 
 
-    def delete(self,request,pk):
+    def delete(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "User not found."
@@ -317,16 +330,16 @@ class AdminNoteListAPIView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-    def patch(self,request,pk):
+    def patch(self, request, pk):
         try:
             note = Note.objects.get(pk=pk)
-        except Note.DoesNotExist:
+        except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "Note not found."
             }, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = NoteSerializer(note,data=request.data,partial=True)
+        serializer = NoteSerializer(note, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -341,10 +354,10 @@ class AdminNoteListAPIView(APIView):
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)  
 
-    def delete(self,request,pk):
+    def delete(self, request, pk):
         try:
             note = Note.objects.get(pk=pk)
-        except Note.DoesNotExist:
+        except (Note.DoesNotExist, ValidationError):
             return Response({
                 "success": False,
                 "message": "Note not found."
